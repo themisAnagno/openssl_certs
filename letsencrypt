@@ -4,8 +4,8 @@
 # ****** Cerbot ********
 # **********************
 
-# Run nginx docker
-docker run -it --name mynginx1 -v "${PWD}"/conf_files:/etc/nginx/conf.d/ -v "${PWD}"/custom_certs:/etc/ssl/custom_certs/ -p 443:443 -p 80:8080 -d --rm nginx
+# Run nginx docker for testing purposes
+# docker run -it --name mynginx1 -v "${PWD}"/conf_files:/etc/nginx/conf.d/ -v "${PWD}"/custom_certs:/etc/ssl/custom_certs/ -p 443:443 -p 80:8080 -d --rm nginx
 
 # Create certbot certificate
 docker run -it --rm --name certbot -v "${PWD}/etc/letsencrypt:/etc/letsencrypt" -v "${PWD}/var/lib/letsencrypt:/var/lib/letsencrypt" -p 80:80 certbot/certbot certonly --standalone
@@ -17,21 +17,22 @@ docker run -it --rm --name certbot -v "${PWD}/etc/letsencrypt:/etc/letsencrypt" 
 # ****** Jenkins ********
 # ***********************
 
-# Create jenkins_jks
-docker container run -it --rm --name java_container -v "${PWD}"/jenkins_jks:/jenkins_jks openjdk bash -c 'cd /jenkins_jks && keytool -genkey -keyalg RSA -alias selfsigned -keystore jenkins_keystore.jks -storepass changeit -keysize 4096'
-
 # Create Jenkins Keystore from PEM cert
-cat fullchain.pem privkey.pem >combined.pem
-openssl pkcs12 -export -in combined.pem -out cert.p12 -passout 'pass:1234'
-keytool -importkeystore -srckeystore cert.p12 -srcstorepass '1234' -srcstoretype pkcs12 -destkeystore jenkins_keystore.jks -deststorepass '123456'
-docker container run \
+# Combine certificate and private key to a single file
+cat certs/fullchain.pem certs/privkey.pem >combined.pem
+ 
+# Create PKCS12 certificate
+openssl pkcs12 -export -in certs/combined.pem -out certs/cert.p12 -passout 'pass:CHANGE_IT_1'
+
+# The tool to be executed in Java. You can also use an openjdk container for this purpose
+# keytool -importkeystore -srckeystore cert.p12 -srcstorepass '1234' -srcstoretype pkcs12 -destkeystore jenkins_keystore.jks -deststorepass '123456'docker container run \
     -it --rm --name java_container \
     -v "${PWD}"/certs:/jenkins_jks openjdk \
-    bash -c 'cd /jenkins_jks && keytool -importkeystore -srckeystore cert.p12 -srcstorepass "1234" -srcstoretype pkcs12 -destkeystore jenkins_keystore.jks -deststorepass "123456" '
+    bash -c 'cd /jenkins_jks && keytool -importkeystore -srckeystore cert.p12 -srcstorepass "CHANGE_IT_1" -srcstoretype pkcs12 -destkeystore jenkins_keystore.jks -deststorepass "CHANGE_IT_2" '
 
-# Create the jenkins_home and copy Jenkins Keystore
+# Create jenkins_home volume and copy Jenkins Keystore
 docker volume create jenkins_home
-sudo cp jenkins_keystore.jks /var/lib/docker/volumes/jenkins_home/_data
+sudo cp certs/jenkins_keystore.jks /var/lib/docker/volumes/jenkins_home/_data
 
 # Start Jenkins
 docker run --name jenkins -u root -d \
@@ -39,9 +40,8 @@ docker run --name jenkins -u root -d \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v $(which docker):/usr/bin/docker \
     -p 443:8443 \
-    -p 50000:50000 \
     jenkins/jenkins \
     --httpPort=-1 \
     --httpsPort=8443 \
     --httpsKeyStore=/var/jenkins_home/jenkins_keystore.jks \
-    --httpsKeyStorePassword=123456
+    --httpsKeyStorePassword=CHANGE_IT_2

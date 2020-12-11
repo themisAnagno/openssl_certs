@@ -44,7 +44,7 @@ fi
 echo "**** CRREATING CN PRIVATE KEY ****"
 sleep 3
 # Create the private key of the CN
-openssl genrsa -aes256 -out "${CN_NAME}".key 2048
+openssl genrsa -out "${CN_NAME}".key 2048
 
 echo "**** CRREATING CN SIGN REQUEST ****"
 sleep 3
@@ -64,4 +64,4 @@ fi
 # Create the fullchain certificate
 echo "**** Full Chain CERTIFICATE ****"
 sleep 3
-cat "${CN_NAME}" "${CA_NAME}" > fullchain.pem
+cat "${CN_NAME}.pem" "${CA_NAME}.pem" > fullchain.pem
