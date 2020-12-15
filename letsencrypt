@@ -25,7 +25,8 @@ cat certs/fullchain.pem certs/privkey.pem >combined.pem
 openssl pkcs12 -export -in certs/combined.pem -out certs/cert.p12 -passout 'pass:CHANGE_IT_1'
 
 # The tool to be executed in Java. You can also use an openjdk container for this purpose
-# keytool -importkeystore -srckeystore cert.p12 -srcstorepass '1234' -srcstoretype pkcs12 -destkeystore jenkins_keystore.jks -deststorepass '123456'docker container run \
+# keytool -importkeystore -srckeystore cert.p12 -srcstorepass '1234' -srcstoretype pkcs12 -destkeystore jenkins_keystore.jks -deststorepass '123456'
+docker container run \
     -it --rm --name java_container \
     -v "${PWD}"/certs:/jenkins_jks openjdk \
     bash -c 'cd /jenkins_jks && keytool -importkeystore -srckeystore cert.p12 -srcstorepass "CHANGE_IT_1" -srcstoretype pkcs12 -destkeystore jenkins_keystore.jks -deststorepass "CHANGE_IT_2" '
